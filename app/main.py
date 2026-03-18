@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from app.core.errors import APIError, map_validation_error
 from app.routers.kv import router as kv_router
 from app.routers.metrics import router as metrics_router
+from app.routers.system import router as system_router
 from app.schemas.common import SuccessResponse
 from app.services.cache_metrics import cache_metrics
 
@@ -15,6 +16,7 @@ from app.services.cache_metrics import cache_metrics
 app = FastAPI(title="mini_redis", version="0.1.0")
 app.include_router(kv_router)
 app.include_router(metrics_router)
+app.include_router(system_router)
 logger = logging.getLogger(__name__)
 
 
