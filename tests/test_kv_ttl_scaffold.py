@@ -31,5 +31,7 @@ def test_expire_rejects_non_positive_seconds() -> None:
     response = client.post("/v1/kv/expire", json={"key": "user:ttl", "seconds": 0})
 
     assert response.status_code == 400
-    assert response.json()["success"] is False
-    assert response.json()["error"]["code"] == "INVALID_INPUT"
+    assert response.json() == {
+        "success": False,
+        "error": {"code": "TTL_INVALID", "message": "seconds must be a positive integer"},
+    }

@@ -35,13 +35,6 @@ class ExpireRequest(BaseModel):
     def validate_key(cls, value: str) -> str:
         return validate_namespaced_key(value)
 
-    @field_validator("seconds")
-    @classmethod
-    def validate_seconds(cls, value: int) -> int:
-        if value <= 0:
-            raise ValueError("seconds must be a positive integer")
-        return value
-
 
 class PersistRequest(BaseModel):
     key: str
@@ -65,5 +58,6 @@ KV_SUCCESS_EXAMPLES: dict[str, dict[str, object]] = {
 KV_FAILURE_EXAMPLES: dict[str, dict[str, Any]] = {
     "invalid_input": build_error_payload("INVALID_INPUT"),
     "key_not_found": build_error_payload("KEY_NOT_FOUND"),
+    "ttl_invalid": build_error_payload("TTL_INVALID", "seconds must be a positive integer"),
     "internal_error": build_error_payload("INTERNAL_ERROR"),
 }

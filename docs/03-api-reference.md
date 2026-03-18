@@ -82,6 +82,7 @@
 ### 3.5 `POST /v1/kv/expire`
 요청: `{ "key": "user:1", "seconds": 60 }`  
 응답: `{ "updated": true|false }`
+실패: `seconds <= 0` 이면 HTTP `400`, `TTL_INVALID`
 
 ### 3.6 `GET /v1/kv/ttl?key={key}`
 응답: `{ "ttl": -2|-1|N }`  
@@ -114,6 +115,7 @@
 - 거부 `key`: `user`, `user:`, `:1`, `user::1`
 - 허용 `prefix`: `user:`, `team:user:`
 - 거부 `prefix`: `user`, `:`, `user::`
+- 거부 `seconds`: `0`, `-1`
 
 ## 5) 단계별 API 게이트(성공 기준/리스크/완료 조건)
 
