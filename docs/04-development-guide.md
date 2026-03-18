@@ -25,7 +25,7 @@
   - `.venv\\Scripts\\activate`
   - `uv pip install -r requirements.txt`
   - `pytest -q`
-  - `locust -f scripts/load_test.py` (또는 `k6 run scripts/load_test.js`)
+  - `locust -f scripts/locustfile.py` (또는 `k6 run scripts/load_test.js`)
   - (대안) `python -m venv .venv && pip install -r requirements.txt`
 
 ## 4) 확장 계획별 4분할(기능 학습 중심)

@@ -52,7 +52,7 @@
 
 단계 4 파트1/2/4 추가 체크:
 - 회귀 테스트 묶음(`tests/test_regression_suite.py`)이 단계 1~3 핵심 플로우를 모두 커버하는지 확인
-- 부하 스크립트(`scripts/load_test.py`, `scripts/load_test.js`)가 동일한 주요 엔드포인트를 검증하는지 확인
+- 부하 스크립트(`scripts/locustfile.py`, `scripts/load_test.js`)가 동일한 주요 엔드포인트를 검증하는지 확인
 - 성능 분석 시 req/s, p95, error rate를 공통 포맷으로 기록하는지 확인
 
 단계 3 파트4 추가 체크:

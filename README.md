@@ -82,7 +82,7 @@ python -m scripts.deploy_health_check --url http://localhost:8000/v1/health --at
 ## 부하 테스트 템플릿
 
 ```bash
-locust -f scripts/load_test.py --headless -u 50 -r 10 -t 1m --host http://localhost:8000
+locust -f scripts/locustfile.py --headless -u 50 -r 10 -t 1m --host http://localhost:8000
 ```
 
 ```bash

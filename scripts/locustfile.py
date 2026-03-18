@@ -2,27 +2,14 @@
 Locust load-test template for Stage-4 part1.
 
 Run example:
-  locust -f scripts/load_test.py --headless -u 50 -r 10 -t 1m --host http://localhost:8000
+  locust -f scripts/locustfile.py --headless -u 50 -r 10 -t 1m --host http://localhost:8000
 """
 
 from __future__ import annotations
 
-try:
-    from locust import HttpUser
-    from locust import between
-    from locust import task
-except ModuleNotFoundError:  # pragma: no cover - fallback for environments without locust
-    class HttpUser:  # type: ignore[override]
-        pass
-
-    def between(_a: float, _b: float):  # type: ignore[override]
-        return None
-
-    def task(_weight: int):  # type: ignore[override]
-        def decorator(func):
-            return func
-
-        return decorator
+from locust import HttpUser
+from locust import between
+from locust import task
 
 
 class MiniRedisLoadUser(HttpUser):
