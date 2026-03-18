@@ -1,97 +1,94 @@
-# 02. Architecture
+# 02. 아키텍처 설계서
 
-## 1) 기술 스택 선택 이유
+## 0) 기술 스택 (Python 명시)
 
-| 영역 | 선택 기술 | 선택 이유 | 대안 |
-| --- | --- | --- | --- |
-| Backend | Node.js + Fastify + TypeScript | 빠른 구현과 충분한 성능, 타입 안정성 | Express, NestJS |
-| Data Store | In-memory `Map` | O(1) 평균 접근, 구현 단순 | Object, LRU 라이브러리 |
-| Validation | Zod | 요청 검증 단순화 | Joi, class-validator |
-| Testing | Vitest + Fastify inject | 단위/통합 테스트 속도 우수 | Jest + Supertest |
+- Language: `Python 3.12+`
+- Web API: `FastAPI`
+- Schema Validation: `Pydantic v2`
+- Redis Client: `redis-py`
+- Test: `pytest`
+- Load Test: `locust` 또는 `k6`
+- Environment/Dependency: `uv` 또는 `pip + venv`
 
-## 2) 시스템 구성
+## 1) 설계 목표
 
-```mermaid
-flowchart LR
-    Client[Client] --> Api[FastifyAPI]
-    Api --> RedisCore[MiniRedisStore]
-    Api --> SlowSource[SlowDataSource]
-```
+- 단계 확장(0~4)에도 변경 영향이 국소화되는 구조 유지
+- API 계약과 도메인 로직의 분리
+- Unit/Integration/Failure/Load 테스트가 가능한 주입형 구조 확보
 
-- API 역할: 입력 검증, 상태 코드/응답 포맷 제공
-- RedisCore 역할: 키-값 저장, TTL, 무효화 처리
-- SlowSource 역할: 캐시 효과 비교를 위한 느린 데이터 응답 시뮬레이션
+## 2) 계층 구조
 
-## 3) 레이어 구조
+1. API 계층: 요청 파싱, 입력 검증, 응답/에러 매핑
+2. Service 계층: 명령 로직(`SET/GET/DEL/EXPIRE/TTL/PERSIST/INVALIDATE`)
+3. Store 계층: 데이터/만료 메타 저장
+4. Observability 계층: 메트릭/로그 집계
 
-```text
-src/
-├─ server.ts
-├─ app.ts
-├─ lib/
-│  └─ mini-redis/
-│     └─ store.ts
-└─ services/
-   └─ slow-data.ts
-```
+규칙:
+- API 계층은 비즈니스 로직을 직접 처리하지 않는다.
+- Service 계층은 HTTP/CLI 포맷에 의존하지 않는다.
+- Store 계층은 외부 인터페이스를 알지 못한다.
 
-- `app.ts`: 라우팅 + 요청 검증 + 응답 계약
-- `store.ts`: 핵심 저장소 로직
-- `slow-data.ts`: 비교 실험용 데이터 소스
+## 2-1) Interface First + AI 시작 방식
 
-## 4) 데이터 모델
+- 단계 0은 **AI로 초기 틀 생성 후 시작**한다.
+- AI로 아래 초안을 먼저 생성한다.
+  - API 스펙 초안(`docs/03`)
+  - 폴더 구조 초안(`src`, `tests`)
+  - 테스트 템플릿 초안(Unit/Integration)
+- 팀은 생성된 초안을 검토하고, 필요한 수정만 반영한 뒤 1단계 구현으로 바로 진입한다.
 
-### RedisEntry
+## 2-2) 단계별 AI 초기틀 생성 원칙
 
-| 필드 | 타입 | 설명 | 필수 여부 |
-| --- | --- | --- | --- |
-| `value` | `string` | 저장 값 | Yes |
-| `expiresAt` | `number \| null` | 만료 시각(epoch ms) | No |
+- 1~4단계도 동일하게 단계 시작 전에 AI 스캐폴딩을 먼저 생성한다.
+- 생성 대상은 "해당 단계에서 추가되는 계층/모듈/테스트"로 제한한다.
+- 기존 동작을 깨지 않도록 회귀 테스트 템플릿을 같이 생성한다.
 
-## 5) 정합성/동시성 규칙
+| 단계 | AI가 먼저 생성할 틀 |
+| --- | --- |
+| 1 | KV 라우터/서비스/스토어 스켈레톤, KV 테스트 템플릿 |
+| 2 | TTL 서비스 모듈, 시간 경계 테스트 템플릿 |
+| 3 | prefix 무효화/메트릭 모듈, 실패 시나리오 템플릿 |
+| 4 | 통합 회귀 테스트 묶음, 부하 테스트 스크립트 템플릿 |
 
-- 키는 문자열이며, 빈 문자열은 허용하지 않습니다.
-- TTL 미설정 키는 영구 보관(`ttl = -1`)입니다.
-- 만료된 키는 조회 시점(lazy expiration)에 즉시 삭제합니다.
-- 주기적 정리(active cleanup)로 백그라운드 만료 키를 정리합니다.
-- 동시성 모델은 단일 Node 프로세스 이벤트 루프 기반입니다.
+## 3) 0~4단계 아키텍처 로드맵
 
-## 6) 핵심 시퀀스 다이어그램
+| 단계 | 아키텍처 초점 | 성공 기준 | 리스크 | 완료 조건 |
+| --- | --- | --- | --- | --- |
+| 0 | 계층 경계, 공통 오류/응답 규칙 확정 | 경계 위반 없이 구조 합의 | 인터페이스 미확정으로 재작업 | 설계 리뷰 승인 |
+| 1 | KV 명령 기본 경로 고정 | 요청->서비스->저장 흐름 일관 | API에 로직 침투 | 계층 위반 0건 |
+| 2 | TTL 모듈 분리, 시간 처리 규칙 | TTL 상태 규칙 충돌 없음 | 시간 경계 오동작 | TTL 실패 케이스 승인 |
+| 3 | prefix 무효화 모듈, 지표 연동 | 무효화 범위 오삭제 0건 | 범위 정의 모호 | 무효화 통합 테스트 통과 |
+| 4 | 통합 성능 계측, 병목 분석 체계 | 성능 원인 설명 가능 | 지표 부족으로 분석 실패 | 부하 리포트 및 개선안 확정 |
 
-### Flow A. GET with TTL 검사
+## 4) 데이터 모델(개념)
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant S as MiniRedisStore
-    C->>A: GET /redis/get?key=k
-    A->>S: get(k)
-    S-->>A: value or null(만료/없음)
-    A-->>C: 200 or 404
-```
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `key` | `string` | 저장 키(빈 문자열 불가) |
+| `value` | `string` | 저장 값 |
+| `expiresAt` | `number \| null` | 만료 시각(epoch ms), 없으면 `null` |
 
-### Flow B. Cache 비교 API
+핵심 규칙:
+- 만료된 키는 조회 시 미존재로 처리한다.
+- TTL 반환 규칙은 API 문서와 동일해야 한다.
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant S as MiniRedisStore
-    participant D as SlowDataSource
-    C->>A: GET /demo/with-cache?id=x
-    A->>S: get(demo:x)
-    alt cache miss
-        A->>D: getSlowData(x)
-        D-->>A: data
-        A->>S: set(demo:x, data, ttl=30)
-    end
-    A-->>C: data + cacheHit
-```
+## 5) 4인 협업 역할 분담(비전공자 단순 4분할)
 
-## 7) 운영/배포 메모
+| 파트 | 책임 |
+| --- | --- |
+| 파트1 | API/검증 계층 |
+| 파트2 | KV 서비스/스토어 계층 |
+| 파트3 | TTL/무효화 계층 |
+| 파트4 | 테스트/관측/문서 동기화 |
 
-- 실행 환경: Node.js 20+
-- 환경 변수: 기본 없음(포트 3000 고정)
-- 배포 전략: 로컬 실행/워크숍 데모 우선
-- 모니터링: 기본 로그 + 벤치마크 결과 문서화
+## 6) 검증 포인트(Unit/Integration/Failure/Load)
+
+- Unit: 모듈별 규칙(검증, TTL 계산, prefix 매칭)
+- Integration: API->Service->Store 계약 일치
+- Failure: 잘못된 입력, 경계 시간, 범위 무효화 오류
+- Load: 단계 4에서 지연/처리량/오류율 검증
+
+## 7) 완료 정의
+
+- 단계별 성공 기준/리스크/완료 조건이 코드 리뷰와 테스트 결과로 증명된다.
+- 설계 문서와 API/테스트 문서 간 충돌이 없다.

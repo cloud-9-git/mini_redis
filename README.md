@@ -1,113 +1,79 @@
-# mini_redis
+# mini_redis (Python, docs-first)
 
-해시 테이블 기반 인메모리 Mini Redis를 구현하고, 동 성일 API에서 캐시 미사용 대비 사용능을 비교하는 프로젝트입니다.
+Redis 발전 흐름(1~4세대)을 따라 범용 캐시 시스템을 단계적으로 만드는 프로젝트입니다.
 
-## 프로젝트 소개
+## 현재 방식
 
-- 목표: Redis 핵심 동작(set/get/del/expire/ttl/invalidate)을 직접 구현
-- 중점: TTL 만료 처리, 동시성 안정성(단일 이벤트 루프), API 제공
-- 결과물: 동작 가능한 서버 + 테스트 + 성능 비교 지표
+- 초기 틀은 `Interface First` 방식으로 AI가 먼저 생성합니다.
+- 팀은 생성된 틀을 바탕으로 4개 파트로 나눠 협업합니다.
+- 구현 언어/스택은 Python 기준입니다.
 
-## 핵심 기능
+## 기술 스택
 
-- `POST /redis/set`: 키-값 저장(선택 TTL)
-- `GET /redis/get`: 키 조회(만료 키는 자동 삭제)
-- `DELETE /redis/del`: 키 삭제
-- `POST /redis/expire`: TTL 설정
-- `GET /redis/ttl`: TTL 조회(`-2/-1/초`)
-- `POST /redis/invalidate`: prefix 기반 무효화
-- `GET /demo/no-cache`, `GET /demo/with-cache`: 캐시 성능 비교
+- Language: `Python 3.12+`
+- API: `FastAPI`
+- Validation: `Pydantic v2`
+- Redis Client: `redis-py`
+- Test: `pytest`
+- Load Test: `locust` 또는 `k6`
 
-## 아키텍처 요약
+## 단계 로드맵
 
-- API 서버: Fastify
-- 저장소 엔진: `Map<string, { value, expiresAt }>`
-- 만료 전략:
-  - Lazy expiration: 조회 시 만료 검사
-  - Active cleanup: 주기적 만료 키 정리
-- 비교 실험: 느린 데이터 소스를 캐시 유무로 분리 호출
+- 0단계: AI로 인터페이스/폴더/테스트 템플릿 + CI/CD 골격 생성
+- 1단계: 기본 KV (`SET/GET/DEL/EXISTS`)
+- 2단계: TTL (`EXPIRE/TTL/PERSIST`)
+- 3단계: Prefix 무효화 + 운영 지표
+- 4단계: 통합 회귀 + 부하 검증
 
-## Quick Start
+## 단계별 AI 초기틀 원칙
 
-### 1) 설치
+- 모든 단계는 "문서 계약 확정 -> AI 초기틀 생성 -> 팀 검토 -> 구현" 순서로 진행합니다.
+- 단계마다 AI가 코드 스켈레톤과 테스트 템플릿을 먼저 생성합니다.
+- 팀은 생성물 검토 후 수정 목록을 합의한 다음 구현을 시작합니다.
 
-```bash
-npm install
-```
+### 단계별 AI 생성 범위
 
-### 2) 개발 서버 실행
+- 0단계: 프로젝트 골격, Dockerfile, CI/CD 파이프라인 초안, `/v1/health`
+- 1단계: KV API/서비스/저장소 스켈레톤 + Unit/Integration 템플릿
+- 2단계: TTL 모듈 스켈레톤 + 경계값/실패 테스트 템플릿
+- 3단계: prefix 무효화/메트릭 스켈레톤 + 장애 시나리오 템플릿
+- 4단계: 통합 회귀 테스트 세트 + 부하 테스트 스크립트 템플릿
 
-```bash
-npm run dev
-```
+## 비전공자 4분할 협업
 
-- Base URL: `http://localhost:3000`
-
-### 3) 테스트
-
-```bash
-npm test
-```
-
-### 4) 성능 측정
-
-```bash
-npm run benchmark
-```
-
-## 성능 측정 조건
-
-- 비교 대상: `GET /demo/no-cache?id=bench` vs `GET /demo/with-cache?id=bench`
-- 워밍업: 20 요청
-- 본측정: 300 요청
-- 동시성: 30
-- 수집 지표: 평균 응답시간(avg), p95, 처리량(req/s), 에러 수
-
-## 성능 결과
-
-`npm run benchmark` 실행 후 아래 표를 갱신합니다.
-
-
-| Scenario   | avg(ms) | p95(ms) | req/s(avg) | errors |
-| ---------- | ------- | ------- | ---------- | ------ |
-| no-cache   | 96.51   | 114.90  | 309.22     | 0      |
-| with-cache | 10.96   | 16.19   | 2669.14    | 0      |
-
-
-## 데모 시나리오
-
-1. `POST /redis/set`으로 키를 저장한다.
-2. `GET /redis/get`과 `GET /redis/ttl`로 값/만료를 확인한다.
-3. `GET /demo/no-cache`를 연속 호출해 지연을 확인한다.
-4. `GET /demo/with-cache`를 연속 호출해 캐시 hit와 성능 개선을 확인한다.
-
-## 프로젝트 구조
-
-```text
-mini_redis/
-├─ src/
-│  ├─ app.ts
-│  ├─ server.ts
-│  ├─ lib/mini-redis/store.ts
-│  └─ services/slow-data.ts
-├─ tests/
-├─ scripts/benchmark.ts
-├─ docs/
-├─ AGENTS.md
-└─ README.md
-```
+- 파트 1: API/입력검증(요청-응답 형태 맞추기)
+- 파트 2: 핵심 명령 구현(KV 기본 동작)
+- 파트 3: TTL/무효화(만료와 삭제 정책)
+- 파트 4: 테스트/문서(Unit/Integration/Failure/Load 결과 정리)
 
 ## 문서
 
-- [Codex 작업 규칙](AGENTS.md)
 - [기획](docs/01-product-planning.md)
 - [아키텍처](docs/02-architecture.md)
-- [API 명세](docs/03-api-reference.md)
+- [API](docs/03-api-reference.md)
 - [개발 가이드](docs/04-development-guide.md)
 - [학습 가이드](docs/05-study-guide.md)
+- [테스트 전략](docs/06-test-strategy.md)
+- [EC2 자동화 가이드](infra/README.md)
 
-## Known Limitations
+## Docker 실행
 
-- 영속성(AOF/RDB)이 없어 서버 재시작 시 데이터가 사라집니다.
-- 단일 프로세스 기준 동작이며 분산 환경 동기화는 미구현입니다.
+```bash
+docker compose up -d --build
+```
+
+- Health check: `http://localhost:8000/v1/health`
+
+## GitHub Actions 설정값 (CD-EC2)
+
+아래 시크릿을 GitHub Repository Secrets에 등록해야 합니다.
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+- `EC2_HOST`
+- `EC2_USER`
+- `EC2_SSH_KEY`
+- `EC2_APP_DIR`
+
+EC2의 배포 디렉터리에는 `docker-compose.yml`과 `.env`(예: `.env.example` 참고)가 있어야 합니다.
 

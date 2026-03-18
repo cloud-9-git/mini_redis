@@ -1,133 +1,108 @@
-# 03. API Reference
+# 03. API 레퍼런스
 
-## 1) 공통 규칙
+## 1) 공통 규약
 
-- Base Path: `/`
+- Base Path: `/v1`
 - Content-Type: `application/json`
-- 키/값 타입: `string`
-- 공통 성공 응답:
+- 성공 응답:
 
 ```json
-{
-  "success": true,
-  "data": {}
-}
+{ "success": true, "data": {} }
 ```
 
-- 공통 실패 응답:
+- 실패 응답:
 
 ```json
-{
-  "success": false,
-  "error": {
-    "code": "INVALID_INPUT",
-    "message": "Invalid input"
-  }
-}
+{ "success": false, "error": { "code": "ERROR_CODE", "message": "..." } }
 ```
 
-## 2) 상태 코드 규칙
+### 표준 에러 코드
+- `INVALID_INPUT`
+- `KEY_NOT_FOUND`
+- `TTL_INVALID`
+- `PREFIX_INVALID`
+- `INTERNAL_ERROR`
 
-| Status | 의미 |
-| --- | --- |
-| `200` | 조회/삭제/갱신 성공 |
-| `201` | 생성 성공 |
-| `400` | 입력 오류 |
-| `404` | 키 없음 또는 만료 |
+## 2) 0~4단계 엔드포인트 로드맵
 
-## 3) 엔드포인트 목록
-
-| Method | Endpoint | 설명 |
+| 단계 | 엔드포인트 | 설명 |
 | --- | --- | --- |
-| `POST` | `/redis/set` | 키 저장 |
-| `GET` | `/redis/get?key=...` | 값 조회 |
-| `DELETE` | `/redis/del?key=...` | 키 삭제 |
-| `POST` | `/redis/expire` | TTL 설정 |
-| `GET` | `/redis/ttl?key=...` | TTL 조회 |
-| `POST` | `/redis/invalidate` | prefix 무효화 |
-| `GET` | `/demo/no-cache?id=...` | 캐시 미사용 비교 |
-| `GET` | `/demo/with-cache?id=...` | 캐시 사용 비교 |
+| 0 | `GET /health` | 기본 상태 확인 |
+| 1 | `POST /kv/set`, `GET /kv/get`, `DELETE /kv/del`, `GET /kv/exists` | 핵심 KV |
+| 2 | `POST /kv/expire`, `GET /kv/ttl`, `POST /kv/persist` | TTL/만료 |
+| 3 | `POST /kv/invalidate-prefix`, `GET /metrics/cache` | 범위 무효화/지표 |
+| 4 | `GET /system/readiness` | 릴리스 준비 상태 |
 
-## 4) 핵심 API 상세
+원칙:
+- 각 단계 시작 전에 AI가 해당 단계 엔드포인트 스캐폴딩과 테스트 템플릿을 먼저 생성한다.
+- 구현은 생성된 초안 검토/수정 후 진행한다.
 
-### `POST /redis/set`
+## 3) 엔드포인트 요약
 
-Request:
+### 3.1 `POST /v1/kv/set`
+요청: `{ "key": "user:1", "value": "kim" }`  
+응답: `{ "success": true, "data": { "stored": true } }`
 
-```json
-{
-  "key": "user:1",
-  "value": "kim",
-  "ttlSeconds": 30
-}
-```
+### 3.2 `GET /v1/kv/get?key={key}`
+응답: `{ "key": "...", "value": "..." }` 또는 `KEY_NOT_FOUND`
 
-Success (`201`):
+### 3.3 `DELETE /v1/kv/del?key={key}`
+응답: `{ "deleted": true|false }`
 
-```json
-{
-  "success": true,
-  "data": { "stored": true }
-}
-```
+### 3.4 `GET /v1/kv/exists?key={key}`
+응답: `{ "exists": true|false }`
 
-### `GET /redis/get?key=user:1`
+### 3.5 `POST /v1/kv/expire`
+요청: `{ "key": "user:1", "seconds": 60 }`  
+응답: `{ "updated": true|false }`
 
-Success (`200`):
+### 3.6 `GET /v1/kv/ttl?key={key}`
+응답: `{ "ttl": -2|-1|N }`  
+규칙: `-2`(미존재/만료), `-1`(만료 없음), `N>=0`(남은 초)
 
-```json
-{
-  "success": true,
-  "data": { "key": "user:1", "value": "kim" }
-}
-```
+### 3.7 `POST /v1/kv/persist`
+요청: `{ "key": "user:1" }`  
+응답: `{ "updated": true|false }`
 
-Failure (`404`):
+### 3.8 `POST /v1/kv/invalidate-prefix`
+요청: `{ "prefix": "user:" }`  
+응답: `{ "deletedCount": 2 }`
 
-```json
-{
-  "success": false,
-  "error": { "code": "KEY_NOT_FOUND", "message": "key not found or expired" }
-}
-```
+### 3.9 `GET /v1/metrics/cache`
+응답: `{ "hits": 10, "misses": 3, "deletes": 2, "errors": 0 }`
 
-### `POST /redis/expire`
+### 3.10 `GET /v1/system/readiness`
+응답: `{ "ready": true|false, "stage": 4, "summary": "..." }`
 
-Request:
+## 4) 입력 검증 규칙
 
-```json
-{
-  "key": "user:1",
-  "ttlSeconds": 10
-}
-```
+- `key`: 필수, 빈 문자열 금지
+- `value`: 문자열
+- `seconds`: 양의 정수
+- `prefix`: 필수, 빈 문자열 금지
 
-Success (`200`):
+## 5) 단계별 API 게이트(성공 기준/리스크/완료 조건)
 
-```json
-{
-  "success": true,
-  "data": { "updated": true }
-}
-```
+| 단계 | 성공 기준 | 리스크 | 완료 조건 |
+| --- | --- | --- | --- |
+| 0 | 공통 응답/에러 스키마 고정 | 팀별 포맷 불일치 | 기본 엔드포인트가 공통 스키마 준수 |
+| 1 | KV 계약 확정 | 입력 검증 누락 | 정상/오류 예시 문서화 완료 |
+| 2 | TTL 규칙 합의 | 만료 해석 혼선 | 경계 케이스 계약 명시 |
+| 3 | prefix 안전 규칙 명시 | 광범위 삭제 위험 | 빈 prefix 방지 포함 |
+| 4 | readiness 판정 기준 확정 | 상태 판단 모호 | 릴리스 기준 필드 문서화 |
 
-### `GET /redis/ttl?key=user:1`
+## 6) 테스트 분류 연계
 
-Success (`200`):
+- Unit: 파라미터 검증, TTL 규칙, prefix 검증
+- Integration: 엔드포인트별 요청/응답 계약
+- Failure: 잘못된 입력, 미존재/만료, 위험한 무효화 요청
+- Load: 단계 4에서 req/s, p95, error rate 검증
 
-```json
-{
-  "success": true,
-  "data": { "key": "user:1", "ttl": 7 }
-}
-```
+## 7) 4인 협업 역할 분담(API 관점)
 
-TTL rule:
-- `-2`: 키 없음(또는 만료됨)
-- `-1`: 만료 시간 없음
-- `>=0`: 남은 초
-
-## 5) 에러 코드
-
-- `INVALID_INPUT`: 요청 파라미터/바디 오류
-- `KEY_NOT_FOUND`: 조회/만료 갱신 대상 키 없음
+| 역할 | 책임 |
+| --- | --- |
+| PM | API 변경 일정/릴리스 범위 조율 |
+| TL | API/도메인 경계 및 호환성 결정 |
+| DEV | 엔드포인트 구현 및 계약 준수 |
+| QA | 계약 기반 테스트/게이트 운영 |
