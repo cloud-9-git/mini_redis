@@ -50,6 +50,11 @@
 - 헬스체크 실패 시 이전 이미지 롤백 절차가 자동 수행되는지 확인
 - 롤백 성공 시 서비스가 복구되더라도 배포 파이프라인은 실패로 종료되어 알림이 남는지 확인
 
+단계 4 파트1/2/4 추가 체크:
+- 회귀 테스트 묶음(`tests/test_regression_suite.py`)이 단계 1~3 핵심 플로우를 모두 커버하는지 확인
+- 부하 스크립트(`scripts/locustfile.py`, `scripts/load_test.js`)가 동일한 주요 엔드포인트를 검증하는지 확인
+- 성능 분석 시 req/s, p95, error rate를 공통 포맷으로 기록하는지 확인
+
 단계 3 파트4 추가 체크:
 - `invalidate-prefix`가 sibling namespace를 삭제하지 않는지 failure test로 확인
 - live key 미매치와 expired key cleanup이 삭제 개수 왜곡 없이 처리되는지 장애 테스트로 확인

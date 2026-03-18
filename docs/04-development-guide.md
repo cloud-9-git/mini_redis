@@ -25,7 +25,7 @@
   - `.venv\\Scripts\\activate`
   - `uv pip install -r requirements.txt`
   - `pytest -q`
-  - `locust -f scripts/load_test.py` (또는 `k6 run scripts/load_test.js`)
+  - `locust -f scripts/locustfile.py` (또는 `k6 run scripts/load_test.js`)
   - (대안) `python -m venv .venv && pip install -r requirements.txt`
 
 ## 4) 확장 계획별 4분할(기능 학습 중심)
@@ -128,6 +128,7 @@ AI 틀잡기 임무:
 
 - 회귀 테스트 묶음/부하 테스트 스크립트 초안 생성
 - 릴리스 체크리스트 템플릿 생성
+- `GET /v1/system/readiness` 릴리스 게이트 엔드포인트 초안 생성
 
 
 | 파트  | 기능          | 기능 설명     | 담당 임무                      |

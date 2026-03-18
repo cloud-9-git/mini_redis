@@ -60,6 +60,7 @@ Redis 발전 흐름(1~4세대)을 따라 범용 캐시 시스템을 단계적으
 - [개발 가이드](docs/04-development-guide.md)
 - [학습 가이드](docs/05-study-guide.md)
 - [테스트 전략](docs/06-test-strategy.md)
+- [릴리스 체크리스트](docs/07-release-checklist.md)
 - [EC2 자동화 가이드](infra/README.md)
 
 ## Docker 실행
@@ -76,6 +77,16 @@ docker compose up -d --build
 
 ```bash
 python -m scripts.deploy_health_check --url http://localhost:8000/v1/health --attempts 10 --interval 3 --timeout 2
+```
+
+## 부하 테스트 템플릿
+
+```bash
+locust -f scripts/locustfile.py --headless -u 50 -r 10 -t 1m --host http://localhost:8000
+```
+
+```bash
+k6 run scripts/load_test.js
 ```
 
 ## GitHub Actions 설정값 (CD-EC2)

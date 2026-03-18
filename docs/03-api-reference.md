@@ -103,7 +103,8 @@
 설명: `hits`는 조회/존재확인 성공 수, `misses`는 조회/존재확인 실패 수, `deletes`는 실제 삭제 성공 수, `invalidations`는 prefix 무효화 성공 수, `errors`는 입력/서버 오류 수를 뜻한다.
 
 ### 3.10 `GET /v1/system/readiness`
-응답: `{ "ready": true|false, "stage": 4, "summary": "..." }`
+응답: `{ "success": true, "data": { "ready": true|false, "stage": 4, "summary": "..." } }`
+설명: `RELEASE_READY=true` 환경 변수가 설정되어야 `ready=true`가 된다.
 
 ## 4) 입력 검증 규칙
 
