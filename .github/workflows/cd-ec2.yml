@@ -100,7 +100,50 @@ jobs:
             cat > .env <<EOF
             DOCKER_IMAGE=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
             EOF
+            PREVIOUS_IMAGE="$(sudo docker inspect -f '{{.Config.Image}}' mini_redis_app 2>/dev/null || true)"
             sudo docker compose pull
             sudo docker compose up -d
-            sleep 3
-            curl -f http://localhost:8000/v1/health
+            ATTEMPTS=0
+            MAX_ATTEMPTS=10
+            HEALTH_OK=0
+            until [ $ATTEMPTS -ge $MAX_ATTEMPTS ]; do
+              if curl -fsS http://localhost:8000/v1/health >/dev/null; then
+                HEALTH_OK=1
+                break
+              fi
+              ATTEMPTS=$((ATTEMPTS+1))
+              sleep 3
+            done
+
+            if [ "$HEALTH_OK" -ne 1 ]; then
+              echo "Health check failed after deploy. Starting rollback..."
+              if [ -z "$PREVIOUS_IMAGE" ]; then
+                echo "No previous image found. Rollback is not possible."
+                exit 1
+              fi
+
+              cat > .env <<EOF
+            DOCKER_IMAGE=$PREVIOUS_IMAGE
+            EOF
+              sudo docker compose pull || true
+              sudo docker compose up -d
+
+              ROLLBACK_ATTEMPTS=0
+              ROLLBACK_OK=0
+              until [ $ROLLBACK_ATTEMPTS -ge $MAX_ATTEMPTS ]; do
+                if curl -fsS http://localhost:8000/v1/health >/dev/null; then
+                  ROLLBACK_OK=1
+                  break
+                fi
+                ROLLBACK_ATTEMPTS=$((ROLLBACK_ATTEMPTS+1))
+                sleep 3
+              done
+
+              if [ "$ROLLBACK_OK" -ne 1 ]; then
+                echo "Rollback failed. Service is still unhealthy."
+                exit 1
+              fi
+
+              echo "Rollback succeeded and service is healthy."
+              exit 1
+            fi

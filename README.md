@@ -70,6 +70,14 @@ docker compose up -d --build
 
 - Health check: `http://localhost:8000/v1/health`
 
+## 배포 헬스체크 유틸
+
+배포 후 헬스 확인은 아래 스크립트로 로컬/원격에서 동일하게 점검할 수 있습니다.
+
+```bash
+python -m scripts.deploy_health_check --url http://localhost:8000/v1/health --attempts 10 --interval 3 --timeout 2
+```
+
 ## GitHub Actions 설정값 (CD-EC2)
 
 아래 시크릿을 GitHub Repository Secrets에 등록해야 합니다.
