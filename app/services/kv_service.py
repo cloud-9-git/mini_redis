@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.core.errors import APIError
 from app.stores.kv_store import KVStore
 
 
@@ -22,6 +23,8 @@ class KVService:
         return self.store.exists(key)
 
     def expire_value(self, key: str, seconds: int) -> bool:
+        if seconds <= 0:
+            raise APIError("TTL_INVALID", message="seconds must be a positive integer")
         return self.store.expire(key, seconds)
 
     def ttl_value(self, key: str) -> int:

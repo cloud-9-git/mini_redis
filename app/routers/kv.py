@@ -96,7 +96,13 @@ def exists_value(query: Annotated[KeyQuery, Depends()]) -> SuccessResponse:
 @router.post(
     "/expire",
     response_model=SuccessResponse,
-    responses=COMMON_ERROR_RESPONSES,
+    responses={
+        **COMMON_ERROR_RESPONSES,
+        400: {
+            "model": ErrorResponse,
+            "content": {"application/json": {"example": KV_FAILURE_EXAMPLES["ttl_invalid"]}},
+        },
+    },
 )
 def expire_value(payload: ExpireRequest) -> SuccessResponse:
     updated = service.expire_value(payload.key, payload.seconds)

@@ -55,6 +55,8 @@ class InMemoryKVStore:
         return self._has_live_key(key)
 
     def expire(self, key: str, seconds: int) -> bool:
+        if seconds <= 0:
+            return False
         if not self._has_live_key(key):
             return False
         self._expires_at[key] = time() + seconds
