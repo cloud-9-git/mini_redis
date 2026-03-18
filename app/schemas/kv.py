@@ -51,7 +51,7 @@ KV_SUCCESS_EXAMPLES: dict[str, dict[str, object]] = {
     "del": {"success": True, "data": {"deleted": True}},
     "exists": {"success": True, "data": {"exists": True}},
     "expire": {"success": True, "data": {"updated": True}},
-    "ttl": {"success": True, "data": {"ttl": 42}},
+    "ttl": {"success": True, "data": {"ttl": -1}},
     "persist": {"success": True, "data": {"updated": True}},
 }
 

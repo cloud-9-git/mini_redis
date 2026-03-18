@@ -85,8 +85,9 @@
 실패: `seconds <= 0` 이면 HTTP `400`, `TTL_INVALID`
 
 ### 3.6 `GET /v1/kv/ttl?key={key}`
-응답: `{ "ttl": -2|-1|N }`  
+응답: `{ "success": true, "data": { "ttl": -2|-1|N } }`  
 규칙: `-2`(미존재/만료), `-1`(만료 없음), `N>=0`(남은 초)
+설명: 미존재/만료도 실패가 아니라 성공 응답으로 처리하고 `ttl = -2`를 반환한다.
 
 ### 3.7 `POST /v1/kv/persist`
 요청: `{ "key": "user:1" }`  
